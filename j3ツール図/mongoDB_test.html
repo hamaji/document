@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title></title>
+    <style>
+        .node {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+
+        .link {
+            stroke: #999;
+            stroke-opacity: .6;
+        }
+
+        .node text {
+            font: 18px sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="d3.min.js" charset="utf-8"></script>
+    <script type="application/json" id="mis">
+        {
+            "nodes": [{
+                "name": "shop",
+                    "group": 2
+            }, {
+                "name": "saleDate",
+                    "group": 2
+            }, {
+                "name": "price",
+                    "group": 4
+            }, {
+                "name": "gender",
+                    "group": 3
+            }, {
+                "name": "items",
+                    "group": 2
+            }, {
+                "name": "customer",
+                    "group": 2
+            }, {
+                "name": "itemName",
+                    "group": 4
+            }, {
+                "name": "quantity",
+                    "group": 4
+            }, {
+                "name": "tags",
+                    "group": 4
+            }],
+                "links": [{
+                "source": 1,
+                    "target": 0,
+                    "value": 8
+            }, {
+                "source": 2,
+                    "target": 4,
+                    "value": 10
+            }, {
+                "source": 4,
+                    "target": 0,
+                    "value": 1
+            }, {
+                "source": 5,
+                    "target": 0,
+                    "value": 1
+            }, {
+                "source": 6,
+                    "target": 4,
+                    "value": 1
+            }, {
+                "source": 7,
+                    "target": 4,
+                    "value": 4
+            }, {
+                "source": 8,
+                    "target": 4,
+                    "value": 5
+            }, {
+                "source": 3,
+                    "target": 5,
+                    "value": 5
+            }
+            ]
+        }
+    </script>
+    <script>
+        //Constants for the SVG
+        var width = 500,
+            height = 500;
+
+        //Set up the colour scale
+        var color = d3.scale.category20();
+
+        //Set up the force layout
+        var force = d3.layout.force()
+            .charge(-500)
+            .linkDistance(100)
+            .size([width, height]);
+
+        //Append a SVG to the body of the html page. Assign this SVG as an object to svg
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        //Read the data from the mis element 
+        var mis = document.getElementById('mis').innerHTML;
+        graph = JSON.parse(mis);
+
+        //Creates the graph data structure out of the json data
+        force.nodes(graph.nodes)
+            .links(graph.links)
+            .start();
+
+        //Create all the line svgs but without locations yet
+        var link = svg.selectAll(".link")
+            .data(graph.links)
+            .enter().append("line")
+            .attr("class", "link")
+            .style("stroke-width", function (d) {
+                return Math.sqrt(d.value);
+            });
+
+        //Do the same with the circles for the nodes - no 
+        var node = svg.selectAll(".node")
+            .data(graph.nodes)
+            .enter().append("g")
+            .attr("class", "node")
+            //.call(force.drag);
+        node.append("circle")
+            .attr("r", 8)
+            .style("fill", function (d) {
+                return color(d.group);
+            })
+        node.append("text")
+            .attr("dx", 10)
+            .attr("dy", ".60em")
+            .attr("dy", ".60em")
+            .text(function (d) { return d.name })
+            .style("stroke", "black");
+
+
+        for (var i = 0; i < 10000; i++) {
+            force.tick();
+        }
+        force.stop();
+        //Now we are giving the SVGs co-ordinates - the force layout is generating the co-ordinates which this code is using to update the attributes of the SVG elements
+        //force.on("tick", function () {
+        link.attr("x1", function (d) {
+            return d.source.x;
+        })
+            .attr("y1", function (d) {
+                return d.source.y;
+            })
+            .attr("x2", function (d) {
+                return d.target.x;
+            })
+            .attr("y2", function (d) {
+                return d.target.y;
+            });
+
+        node.attr("cx", function (d) {
+            return d.x;
+        })
+            .attr("cy", function (d) {
+                return d.y;
+            });
+
+        d3.selectAll("circle").attr("cx", function (d) {
+            return d.x;
+        })
+            .attr("cy", function (d) {
+                return d.y;
+            });
+        d3.selectAll("text").attr("x", function (d) {
+            return d.x;
+        })
+            .attr("y", function (d) {
+                return d.y;
+            });
+        //});
+
+        //for (var i = 0; i < 10000; i++) {
+        //    force.tick();
+        //}
+        //force.stop();
+        d3.selectAll(".node").each(function(d){ d.fixed = true })
+
+        var moveTarget = null;
+        var circle = svg.selectAll('circle')
+        circle.on('mousedown', function (d, i) {
+                console.log(d.name + '(' + d.x + ',' + d.y + ')');
+                moveTarget = d;
+        })
+            .on('mouseup', function (d, i) {
+                moveTarget = null;
+        });
+
+        svg.on('mousemove', function(e) {
+            if (moveTarget != null) {
+                var mousePos = d3.mouse(this);
+                console.log('moveTarget = ' + moveTarget.name + ' (' + mousePos[0] + ',' + mousePos[1] + ')');
+                moveTarget.x = mousePos[0];
+                moveTarget.y = mousePos[1];
+
+                d3.selectAll('line')
+                   .attr({
+                        'x1': function(d) { return d.source.x; },
+                        'y1': function(d) { return d.source.y; },
+                        'x2': function(d) { return d.target.x; },
+                        'y2': function(d) { return d.target.y; }
+                    });
+                d3.selectAll('circle')
+                    .attr({
+                        'cx': function(d) { return d.x; },
+                        'cy': function(d) { return d.y; }
+                    });
+                d3.selectAll('text')
+                    .attr({
+                        'x': function(d) { return d.x; },
+                        'y': function(d) { return d.y; }
+                    });
+            }
+        });
+        //svg.on('mousedown', function () {
+        //    if (moveTarget != null) return;
+        //    var newCircle = svg.append('circle');
+        //    var mousePos = d3.mouse(this);
+        //    var newData = {
+        //        name: 'super',
+        //        age: 10,
+        //        x: mousePos[0],
+        //        y: mousePos[1]
+        //    };
+        //    mis.nodes.push(newData);
+        //    console.log('add circle: ' + newData.x + ',' + newData.y);
+        //    newCircle
+        //        .datum(newData)
+        //        .attr({
+        //            'cx': function (d, i) { console.log(d); return d.x; },
+        //            'cy': function (d, i) { return d.y; },
+        //            'r': 10,
+        //            'fill': 'red'
+        //        })
+        //        .on('mousedown', function (d) {
+        //            moveTarget = d;
+        //        })
+        //        .on('mouseup', function (d) {
+        //            moveTarget = null;
+        //        });
+        //    svg.append('text')
+        //        .datum(newData)
+        //        .text(function (d, i) { return d.name; })
+        //        .attr({
+        //           'font-size': '32',
+        //            'fill': 'white',
+        //            'stroke': 'black',
+        //            'x': function (d, i) { return d.x; },
+        //            'y': function (d, i) { return d.y; }
+        //        });
+        //});
+    </script>
+
+
+</body>
+
+</html>
